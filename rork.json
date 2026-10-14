@@ -1,0 +1,10 @@
+{
+  "apps": [
+    {
+      "name": "Task Titan",
+      "path": "android-task-titan",
+      "framework": "kotlin"
+    }
+  ],
+  "$schema": "https://rork.com/schema/rork.json"
+}
