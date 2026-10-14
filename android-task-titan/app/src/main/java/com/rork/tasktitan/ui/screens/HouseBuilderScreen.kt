@@ -235,6 +235,7 @@ fun HouseBuilderScreen(vm: AppViewModel, onboarding: Boolean, onDone: () -> Unit
                         HouseScene(rooms = rooms, topFloor = floor.coerceAtMost(floors - 1), look = data.profile.look),
                         Modifier.fillMaxSize(),
                         autoSpin = true,
+                        verticalDragScrolls = true,
                         description = "3D preview of ${floorName(floor)}",
                     )
                     Column(Modifier.padding(14.dp)) {

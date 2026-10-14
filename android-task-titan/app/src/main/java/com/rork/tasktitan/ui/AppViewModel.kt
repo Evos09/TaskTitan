@@ -366,10 +366,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun exportJson(): String = store.export(_data.value)
 
     fun deleteEverything() {
+        val chores = _data.value.chores
         store.wipe()
         _data.value = AppData()
         _recentClean.value = emptyMap()
-        _data.value.chores.forEach { ReminderScheduler.cancel(getApplication(), it.id) }
+        chores.forEach { ReminderScheduler.cancel(getApplication(), it.id) }
     }
 
     // endregion
