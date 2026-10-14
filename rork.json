@@ -1,10 +1,18 @@
 {
+  "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
       "name": "Task Titan",
       "path": "android-task-titan",
       "framework": "kotlin"
+    },
+    {
+      "name": "Task Titan",
+      "path": "ios-task-titan",
+      "framework": "swift",
+      "settings": {
+        "swiftSibling": false
+      }
     }
-  ],
-  "$schema": "https://rork.com/schema/rork.json"
+  ]
 }
