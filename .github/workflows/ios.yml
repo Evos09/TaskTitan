@@ -1,0 +1,68 @@
+# Builds the iPhone app on a GitHub-hosted Mac, runs its unit tests on an iPhone
+# simulator, and saves screenshots of the app so it can be checked from Windows.
+name: iOS
+
+on:
+  push:
+    paths: ["ios-task-titan/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios-task-titan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Pick an iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devs = json.load(sys.stdin)["devices"]
+          ios = sorted((k for k in devs if "iOS" in k), key=lambda k: [int(x) for x in k.split("iOS-")[-1].split("-")])
+          phones = [d for d in devs[ios[-1]] if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"])')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl list devices | grep "$UDID"
+
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project TaskTitan.xcodeproj -scheme TaskTitan \
+            -destination "id=$UDID" -only-testing:TaskTitanTests \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -150
+
+      - name: Launch the app and take screenshots
+        if: always()
+        run: |
+          mkdir -p screenshots
+          APP=$(find build/Build/Products -name "TaskTitan.app" -path "*iphonesimulator*" | head -1)
+          [ -n "$APP" ] || { echo "No app was built"; exit 1; }
+          BUNDLE=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" "$BUNDLE"
+          sleep 8
+          xcrun simctl io "$UDID" screenshot screenshots/01-launch.png
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-screenshots
+          path: ios-task-titan/screenshots
+          if-no-files-found: ignore

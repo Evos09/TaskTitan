@@ -23,6 +23,8 @@ final class ReminderService: NSObject {
 
     private let center = UNUserNotificationCenter.current()
     private var latest: AppData?
+    /// Bumped on every sync; an older sync that finishes late leaves the pending list alone.
+    private var generation = 0
 
     func configure() {
         center.delegate = self
@@ -70,6 +72,8 @@ final class ReminderService: NSObject {
     /// Rebuild every pending reminder from [data].
     func sync(_ data: AppData) {
         latest = data
+        generation += 1
+        let gen = generation
         let today = DateUtil.today()
         // Drop skips that are in the past.
         skips = skips.filter { $0.value >= today }
@@ -101,8 +105,11 @@ final class ReminderService: NSObject {
         let center = self.center
         center.getPendingNotificationRequests { pending in
             let ours = pending.map(\.identifier).filter { $0.hasPrefix(Self.idPrefix) }
-            center.removePendingNotificationRequests(withIdentifiers: ours)
-            requests.forEach { center.add($0) }
+            Task { @MainActor in
+                guard gen == self.generation else { return }
+                center.removePendingNotificationRequests(withIdentifiers: ours)
+                requests.forEach { center.add($0) }
+            }
         }
         // Clear any delivered nudge for chores already finished today.
         let doneToday = data.completions.filter { $0.epochDay == today }.map { "\(Self.idPrefix)\($0.choreId).\(today)" }

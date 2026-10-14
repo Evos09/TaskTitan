@@ -33,6 +33,8 @@ private final class HouseSim {
     var cache: [Face] = []
     var lastDrag: CGSize = .zero
     var lastMag: CGFloat = 1
+    /// For scroll-friendly views: 0 = undecided, 1 = orbiting, 2 = left to the page.
+    var dragAxis = 0
 }
 
 private let cleanAnim: TimeInterval = 1.3
@@ -63,6 +65,8 @@ struct House3DView: View {
     var autoSpin = false
     var showLabels = false
     var animated = true
+    /// Inside a scrolling page: vertical drags scroll the page and only horizontal drags orbit.
+    var verticalDragScrolls = false
     var description = "3D view of your home"
 
     @Environment(\.tt) private var tt
@@ -79,7 +83,8 @@ struct House3DView: View {
             }
         }
         .contentShape(Rectangle())
-        .gesture(orbitGesture, including: interactive ? .all : .subviews)
+        .gesture(orbitGesture, including: interactive && !verticalDragScrolls ? .all : .subviews)
+        .simultaneousGesture(orbitGesture, including: interactive && verticalDragScrolls ? .all : .subviews)
         .onTapGesture(count: 2) {
             guard interactive else { return }
             sim.yaw = 0.72; sim.pitch = 0.78; sim.zoom = 1
@@ -98,14 +103,21 @@ struct House3DView: View {
         SimultaneousGesture(
             DragGesture(minimumDistance: 2)
                 .onChanged { v in
+                    if verticalDragScrolls && sim.dragAxis == 0 {
+                        let t = v.translation
+                        guard max(abs(t.width), abs(t.height)) > 8 else { return }
+                        sim.dragAxis = abs(t.width) > abs(t.height) ? 1 : 2
+                        sim.lastDrag = t
+                    }
+                    if sim.dragAxis == 2 { return }
                     let dx = v.translation.width - sim.lastDrag.width
                     let dy = v.translation.height - sim.lastDrag.height
                     sim.lastDrag = v.translation
                     sim.yaw -= dx * 0.008
-                    sim.pitch = min(max(sim.pitch + dy * 0.005, 0.32), 1.45)
+                    if !verticalDragScrolls { sim.pitch = min(max(sim.pitch + dy * 0.005, 0.32), 1.45) }
                     tick += 1
                 }
-                .onEnded { _ in sim.lastDrag = .zero },
+                .onEnded { _ in sim.lastDrag = .zero; sim.dragAxis = 0 },
             MagnifyGesture()
                 .onChanged { v in
                     let f = v.magnification / sim.lastMag

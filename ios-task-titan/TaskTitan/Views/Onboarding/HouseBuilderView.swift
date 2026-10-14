@@ -219,6 +219,7 @@ struct HouseBuilderView: View {
             House3DView(
                 scene: HouseScene(rooms: rooms, topFloor: min(floor, floors - 1), look: store.data.profile.look),
                 autoSpin: true,
+                verticalDragScrolls: true,
                 description: "3D preview of \(floorName(floor))"
             )
             VStack(alignment: .leading, spacing: 0) {

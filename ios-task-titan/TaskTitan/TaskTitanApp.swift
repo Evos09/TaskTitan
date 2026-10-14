@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 @main
@@ -22,6 +23,9 @@ struct TaskTitanApp: App {
                 .preferredColorScheme(.light)
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { store.refreshDay() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: RunLoop.main)) { _ in
+                    store.refreshDay()
                 }
         }
     }

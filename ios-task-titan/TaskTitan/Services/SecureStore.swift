@@ -29,9 +29,12 @@ nonisolated struct SecureStore: Sendable {
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
-        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let data = item as? Data {
+        let found = SecItemCopyMatching(query as CFDictionary, &item)
+        if found == errSecSuccess, let data = item as? Data {
             return SymmetricKey(data: data)
         }
+        // Only mint a key when none exists; any other status (e.g. device still locked) is transient.
+        guard found == errSecItemNotFound else { throw StoreError.keychain(found) }
         let key = SymmetricKey(size: .bits256)
         var add = keyQuery()
         add[kSecValueData as String] = key.withUnsafeBytes { Data($0) }
@@ -51,6 +54,7 @@ nonisolated struct SecureStore: Sendable {
             return try JSONDecoder().decode(AppData.self, from: plain)
         } catch {
             print("SecureStore: could not restore saved data (\(type(of: error)))")
+            quarantine()
             return nil
         }
     }
@@ -60,7 +64,12 @@ nonisolated struct SecureStore: Sendable {
             let json = try JSONEncoder().encode(data)
             let sealed = try AES.GCM.seal(json, using: key())
             guard let combined = sealed.combined else { return }
-            try combined.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            var url = fileURL
+            try combined.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            // The key never leaves this device, so a backed-up copy could never be opened elsewhere.
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try url.setResourceValues(values)
         } catch {
             print("SecureStore: could not save data (\(type(of: error)))")
         }
@@ -72,6 +81,14 @@ nonisolated struct SecureStore: Sendable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let json = try? encoder.encode(data) else { return "{}" }
         return String(data: json, encoding: .utf8) ?? "{}"
+    }
+
+    /// Move an unreadable save aside instead of letting the next save overwrite it,
+    /// so a later version (or support) can still recover it.
+    private func quarantine() {
+        let aside = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("tasktitan-unreadable-\(Int(Date().timeIntervalSince1970)).sealed")
+        try? FileManager.default.moveItem(at: fileURL, to: aside)
     }
 
     func wipe() {

@@ -196,3 +196,114 @@ nonisolated extension AppSettings {
         reminderPausedUntil = try c.decodeIfPresent(Int.self, forKey: .reminderPausedUntil) ?? d.reminderPausedUntil
     }
 }
+
+nonisolated extension KeyedDecodingContainer {
+    /// The stored value for [key], or [fallback] when an older save doesn't have it.
+    func value<T: Decodable>(_ key: Key, or fallback: T) throws -> T {
+        try decodeIfPresent(T.self, forKey: key) ?? fallback
+    }
+}
+
+nonisolated extension Member {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        let d = Member(id: id, name: name, colorIndex: 0)
+        colorIndex = try c.value(.colorIndex, or: d.colorIndex)
+        isYou = try c.value(.isYou, or: d.isYou)
+        availableDays = try c.value(.availableDays, or: d.availableDays)
+    }
+}
+
+nonisolated extension Chore {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        roomId = try c.decode(String.self, forKey: .roomId)
+        kind = try c.decode(ChoreKind.self, forKey: .kind)
+        weight = try c.decode(Int.self, forKey: .weight)
+        startEpochDay = try c.decode(Int.self, forKey: .startEpochDay)
+        let d = Chore(id: id, title: title, roomId: roomId, kind: kind, weight: weight, startEpochDay: startEpochDay)
+        frequency = try c.value(.frequency, or: d.frequency)
+        intervalDays = try c.value(.intervalDays, or: d.intervalDays)
+        assigneeId = try c.decodeIfPresent(String.self, forKey: .assigneeId)
+        rotate = try c.value(.rotate, or: d.rotate)
+        autoAssign = try c.value(.autoAssign, or: d.autoAssign)
+        timerMinutes = try c.decodeIfPresent(Int.self, forKey: .timerMinutes)
+        needsConfirm = try c.value(.needsConfirm, or: d.needsConfirm)
+        checklist = try c.value(.checklist, or: d.checklist)
+        notes = try c.value(.notes, or: d.notes)
+        remindMinuteOfDay = try c.decodeIfPresent(Int.self, forKey: .remindMinuteOfDay)
+    }
+}
+
+nonisolated extension Completion {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        choreId = try c.decode(String.self, forKey: .choreId)
+        epochDay = try c.decode(Int.self, forKey: .epochDay)
+        memberId = try c.decode(String.self, forKey: .memberId)
+        xp = try c.decode(Int.self, forKey: .xp)
+        coins = try c.decode(Int.self, forKey: .coins)
+        energy = try c.decode(Int.self, forKey: .energy)
+        confirmed = try c.value(.confirmed, or: true)
+        atMillis = try c.value(.atMillis, or: 0)
+    }
+}
+
+nonisolated extension AvatarLook {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = AvatarLook()
+        body = try c.value(.body, or: d.body)
+        skin = try c.value(.skin, or: d.skin)
+        hairColor = try c.value(.hairColor, or: d.hairColor)
+        hair = try c.value(.hair, or: d.hair)
+        outfit = try c.value(.outfit, or: d.outfit)
+        shoes = try c.value(.shoes, or: d.shoes)
+        accessory = try c.decodeIfPresent(String.self, forKey: .accessory)
+        pet = try c.decodeIfPresent(String.self, forKey: .pet)
+        aura = try c.decodeIfPresent(String.self, forKey: .aura)
+    }
+}
+
+nonisolated extension Profile {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Profile()
+        name = try c.value(.name, or: d.name)
+        coins = try c.value(.coins, or: d.coins)
+        bonusXp = try c.value(.bonusXp, or: d.bonusXp)
+        owned = try c.value(.owned, or: d.owned)
+        look = try c.value(.look, or: d.look)
+        claimedQuests = try c.value(.claimedQuests, or: d.claimedQuests)
+        claimedAchievements = try c.value(.claimedAchievements, or: d.claimedAchievements)
+        equippedDecor = try c.value(.equippedDecor, or: d.equippedDecor)
+        lastSeenLevel = try c.value(.lastSeenLevel, or: d.lastSeenLevel)
+    }
+}
+
+nonisolated extension AppData {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = AppData()
+        version = try c.value(.version, or: d.version)
+        setupDone = try c.value(.setupDone, or: d.setupDone)
+        householdName = try c.value(.householdName, or: d.householdName)
+        inviteCode = try c.value(.inviteCode, or: d.inviteCode)
+        homeSize = try c.value(.homeSize, or: d.homeSize)
+        floors = try c.value(.floors, or: d.floors)
+        rooms = try c.value(.rooms, or: d.rooms)
+        members = try c.value(.members, or: d.members)
+        chores = try c.value(.chores, or: d.chores)
+        completions = try c.value(.completions, or: d.completions)
+        memories = try c.value(.memories, or: d.memories)
+        profile = try c.value(.profile, or: d.profile)
+        settings = try c.value(.settings, or: d.settings)
+        weeklyGoal = try c.value(.weeklyGoal, or: d.weeklyGoal)
+        isPro = try c.value(.isPro, or: d.isPro)
+    }
+}
