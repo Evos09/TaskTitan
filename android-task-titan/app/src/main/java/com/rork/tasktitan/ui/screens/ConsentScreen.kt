@@ -65,6 +65,7 @@ fun ConsentScreen(vm: AppViewModel, onContinue: () -> Unit) {
     var age by remember { mutableStateOf("adult") }
     var agreed by remember { mutableStateOf(false) }
     var parent by remember { mutableStateOf(false) }
+    var style by remember { mutableStateOf("boy") }
     val needsParent = age == "child"
     val canGo = agreed && (!needsParent || parent)
 
@@ -79,7 +80,7 @@ fun ConsentScreen(vm: AppViewModel, onContinue: () -> Unit) {
     ) {
         Spacer(Modifier.height(12.dp))
         Box(Modifier.fillMaxWidth().height(230.dp), contentAlignment = Alignment.Center) {
-            AvatarView(AvatarLook(), EnergyTier.THRIVING, Modifier.fillMaxSize(), pose = Pose.CELEBRATE, spin = true)
+            AvatarView(AvatarLook(style = style), EnergyTier.THRIVING, Modifier.fillMaxSize(), pose = Pose.CELEBRATE, spin = true)
         }
         // The pedestal renders below the avatar box; keep it clear of the title.
         Spacer(Modifier.height(48.dp))
@@ -97,6 +98,20 @@ fun ConsentScreen(vm: AppViewModel, onContinue: () -> Unit) {
             colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = c.surface, unfocusedContainerColor = c.surface, unfocusedBorderColor = c.outline),
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(Modifier.height(16.dp))
+        Text("Your character", style = MaterialTheme.typography.titleMedium, color = c.ink)
+        Spacer(Modifier.height(8.dp))
+        val styles = listOf("boy" to "Boy", "girl" to "Girl")
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            styles.forEachIndexed { i, (key, label) ->
+                SegmentedButton(
+                    selected = style == key,
+                    onClick = { style = key },
+                    shape = SegmentedButtonDefaults.itemShape(i, styles.size),
+                    colors = SegmentedButtonDefaults.colors(activeContainerColor = c.tangerineSoft, activeContentColor = c.tangerine),
+                ) { Text(label) }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Text("Who's using this device?", style = MaterialTheme.typography.titleMedium, color = c.ink)
         Spacer(Modifier.height(8.dp))
@@ -130,7 +145,7 @@ fun ConsentScreen(vm: AppViewModel, onContinue: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
-                vm.giveConsent(name, age, parent)
+                vm.giveConsent(name, age, parent, style)
                 if (needsParent) vm.updateSettings { it.copy(shareActivity = false, shareProgress = false, interHouseholdChallenge = false) }
                 onContinue()
             },

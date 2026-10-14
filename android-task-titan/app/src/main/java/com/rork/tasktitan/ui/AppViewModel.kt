@@ -14,6 +14,7 @@ import com.rork.tasktitan.data.Completion
 import com.rork.tasktitan.data.DateUtil
 import com.rork.tasktitan.data.EnergyTier
 import com.rork.tasktitan.data.GameRules
+import com.rork.tasktitan.data.Health
 import com.rork.tasktitan.data.HomeSize
 import com.rork.tasktitan.data.ItemCategory
 import com.rork.tasktitan.data.Member
@@ -53,6 +54,10 @@ data class Stats(
     val coins: Int,
     val energy: Int,
     val tier: EnergyTier,
+    /** How the avatar feels: set by whether your chores due today are done. */
+    val health: Health,
+    val yourDueToday: Int,
+    val yourDoneToday: Int,
     val streak: Int,
     val todayChores: List<ChoreStatus>,
     val waitingCount: Int,
@@ -130,12 +135,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // region Onboarding & house
 
-    fun giveConsent(name: String, ageGroup: String, parentApproved: Boolean) = mutate { d ->
+    fun giveConsent(name: String, ageGroup: String, parentApproved: Boolean, style: String = "boy") = mutate { d ->
         val you = Member(GameRules.newId(), name.ifBlank { "You" }, 0, isYou = true)
         d.copy(
             members = listOf(you),
             inviteCode = GameRules.inviteCode(),
-            profile = d.profile.copy(name = you.name),
+            profile = d.profile.copy(name = you.name, look = d.profile.look.copy(style = style)),
             settings = d.settings.copy(consentGiven = true, ageGroup = ageGroup, parentApproved = parentApproved),
         )
     }
@@ -391,6 +396,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val todayChores = d.chores.filter { GameRules.isDue(it, today) }
                 .map { ChoreStatus(it, roomsById[it.roomId], todayCompletions[it.id]) }
                 .sortedWith(compareBy<ChoreStatus> { it.isDone }.thenByDescending { it.chore.weight })
+            // Chores assigned to you, or to nobody, count toward your health.
+            val yourDue = todayChores.filter { it.chore.assigneeId == null || it.chore.assigneeId == you?.id }
+            val yourDone = yourDue.count { it.isDone }
             val dueCount = todayChores.size
             val doneCount = todayChores.count { it.isDone }
             val condition = if (dueCount == 0) 100 else doneCount * 100 / dueCount
@@ -441,6 +449,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             return Stats(
                 today = today, you = you, level = level, totalXp = totalXp, coins = d.profile.coins,
                 energy = energy, tier = GameRules.tier(energy), streak = streak,
+                health = if (you == null) Health.HEALTHY else GameRules.health(yourDue.size, yourDone),
+                yourDueToday = yourDue.size, yourDoneToday = yourDone,
                 todayChores = todayChores, waitingCount = dueCount - doneCount,
                 houseCondition = condition, roomCondition = roomCondition,
                 householdWeek = weekCompletions.size,

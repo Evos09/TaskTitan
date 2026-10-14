@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.rork.tasktitan.data.AvatarLook
 import com.rork.tasktitan.data.DateUtil
 import com.rork.tasktitan.data.EnergyTier
+import com.rork.tasktitan.data.Health
 import com.rork.tasktitan.data.Room
 import com.rork.tasktitan.data.RoomType
 import com.rork.tasktitan.ui.theme.TT
@@ -57,6 +58,7 @@ data class HouseScene(
     val recentClean: Map<String, Long> = emptyMap(),
     val look: AvatarLook? = null,
     val tier: EnergyTier = EnergyTier.NEUTRAL,
+    val health: Health = Health.HEALTHY,
     val decor: List<String> = emptyList(),
     val focus: Pair<String, Long>? = null,
     val roomCondition: Map<String, Int> = emptyMap(),
@@ -295,7 +297,7 @@ fun House3DView(
         val look = scene.look
         if (look != null && avatar.floor == scene.topFloor && floorRooms.isNotEmpty()) {
             dyn.layer = scene.topFloor * 10 + 1
-            buildAvatar(dyn, look, scene.tier, avatar.x, base + SLAB, avatar.z, avatar.facing, avatar.pose, t)
+            buildAvatar(dyn, look, scene.tier, avatar.x, base + SLAB, avatar.z, avatar.facing, avatar.pose, t, health = scene.health)
         }
 
         val all = if (dyn.faces.isEmpty()) staticFaces else staticFaces + dyn.faces
@@ -329,7 +331,7 @@ fun House3DView(
                     }
                 }
             }
-            if (look != null && scene.tier == EnergyTier.RADIANT && avatar.floor == scene.topFloor) {
+            if (look != null && scene.tier == EnergyTier.RADIANT && scene.health == Health.HEALTHY && avatar.floor == scene.topFloor) {
                 for (j in 0 until 4) {
                     val a = t * 1.6f + j * 1.57f
                     if (renderer.project(camera, size.width, size.height, avatar.x + cos(a) * 0.4f, base + 0.5f + sin(t * 2 + j) * 0.25f, avatar.z + sin(a) * 0.4f, tmp, baseScale)) {

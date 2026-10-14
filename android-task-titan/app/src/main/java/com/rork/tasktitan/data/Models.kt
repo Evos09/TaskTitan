@@ -99,6 +99,8 @@ data class Memory(
 
 @Serializable
 data class AvatarLook(
+    /** "boy" or "girl"; picks the character model and its default hair. */
+    val style: String = "boy",
     val body: Int = 1,
     val skin: Int = 2,
     val hairColor: Int = 1,

@@ -61,15 +61,61 @@ class MeshBuilder(private val light: Float = 1f, private val tint: Color? = null
 
     fun resetTransform() = transform(0f, 0f, 0f, 0f, 1f)
 
+    // Local joint frame applied before the placement transform: p' = jm·p + jt, where jm is a rotation.
+    private var jm = floatArrayOf(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)
+    private var jt = floatArrayOf(0f, 0f, 0f)
+    private val joints = ArrayList<Pair<FloatArray, FloatArray>>()
+
+    /**
+     * Rotates everything drawn until the matching [popJoint] about the pivot (px, py, pz),
+     * first by [rz] around z, then by [rx] around x. Joints nest, so an elbow inside a
+     * shoulder follows the shoulder. Positive [rx] swings the part below the pivot backwards.
+     */
+    fun pushJoint(px: Float, py: Float, pz: Float, rx: Float = 0f, rz: Float = 0f) {
+        joints.add(jm to jt)
+        val cx = cos(rx); val sx = sin(rx); val cz = cos(rz); val sz = sin(rz)
+        val r = floatArrayOf(cz, -sz, 0f, cx * sz, cx * cz, -sx, sx * sz, sx * cz, cx)
+        val m = FloatArray(9)
+        for (row in 0..2) for (col in 0..2) {
+            m[row * 3 + col] = jm[row * 3] * r[col] + jm[row * 3 + 1] * r[3 + col] + jm[row * 3 + 2] * r[6 + col]
+        }
+        val t = FloatArray(3)
+        for (row in 0..2) {
+            val viaParent = jm[row * 3] * px + jm[row * 3 + 1] * py + jm[row * 3 + 2] * pz
+            val viaJoint = m[row * 3] * px + m[row * 3 + 1] * py + m[row * 3 + 2] * pz
+            t[row] = viaParent - viaJoint + jt[row]
+        }
+        jm = m; jt = t
+    }
+
+    fun popJoint() {
+        val (m, t) = joints.removeAt(joints.lastIndex)
+        jm = m; jt = t
+    }
+
     private fun tx(x: Float, z: Float): Float = ox + (x * cy + z * sy) * scale
     private fun tz(x: Float, z: Float): Float = oz + (-x * sy + z * cy) * scale
     private fun ty(y: Float): Float = oy + y * scale
 
-    private fun addQuad(p: FloatArray, lnx: Float, lny: Float, lnz: Float, color: Color, bias: Float, twoSided: Boolean, unlit: Boolean) {
-        val out = FloatArray(p.size)
+    private fun addQuad(p: FloatArray, lnx0: Float, lny0: Float, lnz0: Float, color: Color, bias: Float, twoSided: Boolean, unlit: Boolean) {
+        var lnx = lnx0; var lny = lny0; var lnz = lnz0
+        val pts = if (joints.isEmpty()) p else FloatArray(p.size).also { q ->
+            var j = 0
+            while (j < p.size) {
+                val x = p[j]; val y = p[j + 1]; val z = p[j + 2]
+                q[j] = jm[0] * x + jm[1] * y + jm[2] * z + jt[0]
+                q[j + 1] = jm[3] * x + jm[4] * y + jm[5] * z + jt[1]
+                q[j + 2] = jm[6] * x + jm[7] * y + jm[8] * z + jt[2]
+                j += 3
+            }
+            lnx = jm[0] * lnx0 + jm[1] * lny0 + jm[2] * lnz0
+            lny = jm[3] * lnx0 + jm[4] * lny0 + jm[5] * lnz0
+            lnz = jm[6] * lnx0 + jm[7] * lny0 + jm[8] * lnz0
+        }
+        val out = FloatArray(pts.size)
         var i = 0
-        while (i < p.size) {
-            out[i] = tx(p[i], p[i + 2]); out[i + 1] = ty(p[i + 1]); out[i + 2] = tz(p[i], p[i + 2])
+        while (i < pts.size) {
+            out[i] = tx(pts[i], pts[i + 2]); out[i + 1] = ty(pts[i + 1]); out[i + 2] = tz(pts[i], pts[i + 2])
             i += 3
         }
         val wnx = lnx * cy + lnz * sy

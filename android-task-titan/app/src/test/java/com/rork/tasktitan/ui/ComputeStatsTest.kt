@@ -3,6 +3,7 @@ package com.rork.tasktitan.ui
 import com.rork.tasktitan.data.AppData
 import com.rork.tasktitan.data.EnergyTier
 import com.rork.tasktitan.data.Frequency
+import com.rork.tasktitan.data.Health
 import com.rork.tasktitan.data.Member
 import com.rork.tasktitan.data.Room
 import com.rork.tasktitan.data.RoomType
@@ -124,6 +125,31 @@ class ComputeStatsTest {
         val weekly = chore("weekly", frequency = Frequency.WEEKLY, start = today - 3)
         val s = stats(base.copy(chores = listOf(light, weekly)))
         assertEquals(listOf("light"), s.todayChores.map { it.chore.id })
+    }
+
+    @Test
+    fun `health follows your chores for today`() {
+        assertEquals(Health.SICK, stats(base).health)
+        assertEquals(2, stats(base).yourDueToday)
+        val half = stats(base.copy(completions = listOf(done("light", today))))
+        assertEquals(Health.QUEASY, half.health)
+        assertEquals(1, half.yourDoneToday)
+        val all = stats(base.copy(completions = listOf(done("light", today), done("heavy", today))))
+        assertEquals(Health.HEALTHY, all.health)
+    }
+
+    @Test
+    fun `chores assigned to someone else do not make you sick`() {
+        val samsChores = base.copy(chores = base.chores.map { it.copy(assigneeId = "sam") })
+        val s = stats(samsChores)
+        assertEquals(0, s.yourDueToday)
+        assertEquals(Health.HEALTHY, s.health)
+    }
+
+    @Test
+    fun `a chore someone else finished for you still counts`() {
+        val s = stats(base.copy(completions = listOf(done("light", today, memberId = "sam"), done("heavy", today, memberId = "sam"))))
+        assertEquals(Health.HEALTHY, s.health)
     }
 
     @Test

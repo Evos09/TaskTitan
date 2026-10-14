@@ -165,11 +165,16 @@ fun HudStrip(stats: Stats, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(4.dp))
             Text("Lv ${stats.level.level}", fontFamily = Display, fontSize = 17.sp, color = c.ink)
         }
-        HudPill(Modifier.weight(1.15f), "Energy ${stats.tier.label}") {
-            Icon(Icons.Rounded.Bolt, null, tint = c.mint, modifier = Modifier.size(24.dp))
+        val healthColor = when (stats.health) {
+            com.rork.tasktitan.data.Health.HEALTHY -> c.mint
+            com.rork.tasktitan.data.Health.QUEASY -> c.sun
+            com.rork.tasktitan.data.Health.SICK -> c.bubblegum
+        }
+        HudPill(Modifier.weight(1.15f), "Health ${stats.health.label}, ${stats.yourDoneToday} of ${stats.yourDueToday} of your chores done") {
+            Icon(Icons.Rounded.Favorite, null, tint = healthColor, modifier = Modifier.size(24.dp))
             Column {
-                Text("Energy", style = MaterialTheme.typography.labelSmall, color = c.muted)
-                Text(stats.tier.label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp), color = c.mint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Health", style = MaterialTheme.typography.labelSmall, color = c.muted)
+                Text(stats.health.label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp), color = healthColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         HudPill(Modifier.weight(1.15f), "XP ${stats.level.xpInto} of ${stats.level.xpNeeded}") {

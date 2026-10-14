@@ -110,10 +110,10 @@ fun RewardsScreen(vm: AppViewModel, onPro: () -> Unit) {
                     .clip(RoundedCornerShape(30.dp))
                     .background(Brush.verticalGradient(listOf(Color(0xFFFFE3F0), Color(0xFFFFF1E2), Color(0xFFFFF8EC)))),
             ) {
-                AvatarView(look, stats.tier, Modifier.fillMaxSize().padding(top = 24.dp), pose = Pose.IDLE, description = "Your avatar, energy ${stats.tier.label}")
+                AvatarView(look, stats.tier, Modifier.fillMaxSize().padding(top = 24.dp), pose = Pose.IDLE, description = "Your avatar, ${stats.health.label.lowercase()}, energy ${stats.tier.label}", health = stats.health)
                 Column(Modifier.padding(16.dp)) {
                     Text("${stats.you?.name ?: "You"} · Lv ${stats.level.level}", style = MaterialTheme.typography.titleLarge, color = c.ink)
-                    Text("Energy: ${stats.tier.label}", style = MaterialTheme.typography.labelLarge, color = c.mint)
+                    Text("${stats.health.label} · Energy ${stats.tier.label}", style = MaterialTheme.typography.labelLarge, color = if (stats.health == com.rork.tasktitan.data.Health.HEALTHY) c.mint else c.bubblegum)
                 }
                 Text(
                     "Drag to spin",
@@ -122,7 +122,7 @@ fun RewardsScreen(vm: AppViewModel, onPro: () -> Unit) {
                 )
             }
             Text(
-                "Energy starts fresh each morning and only goes up. Missed chores never take anything away.",
+                "Health follows today's chores: finish yours and you feel great again. Energy and levels only ever go up.",
                 style = MaterialTheme.typography.bodySmall, color = c.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
@@ -286,6 +286,19 @@ private fun LookEditor(data: AppData, onChange: (com.rork.tasktitan.data.AvatarL
     val look = data.profile.look
     Column(Modifier.padding(horizontal = 12.dp)) {
         SoftCard(Modifier.fillMaxWidth()) {
+            Text("Character", style = MaterialTheme.typography.titleSmall, color = c.ink)
+            Spacer(Modifier.height(6.dp))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                val styles = listOf("boy" to "Boy", "girl" to "Girl")
+                styles.forEachIndexed { i, (key, label) ->
+                    SegmentedButton(
+                        selected = look.style == key, onClick = { onChange(look.copy(style = key)) },
+                        shape = SegmentedButtonDefaults.itemShape(i, styles.size),
+                        colors = SegmentedButtonDefaults.colors(activeContainerColor = c.tangerineSoft, activeContentColor = c.tangerine),
+                    ) { Text(label) }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
             Text("Body type", style = MaterialTheme.typography.titleSmall, color = c.ink)
             Spacer(Modifier.height(6.dp))
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {

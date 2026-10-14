@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rork.tasktitan.data.DateUtil
 import com.rork.tasktitan.data.GameRules
+import com.rork.tasktitan.data.Health
 import com.rork.tasktitan.engine.CameraMode
 import com.rork.tasktitan.engine.HouseScene
 import com.rork.tasktitan.engine.House3DView
@@ -131,6 +132,12 @@ fun HomeScreen(
     val focusRoom = focus?.let { f -> data.rooms.firstOrNull { it.id == f.first } }
     val status = when {
         focusRoom != null && System.currentTimeMillis() - (focus?.second ?: 0) < 4000 -> "$name is celebrating in the ${focusRoom.name.lowercase()}!"
+        stats.health != Health.HEALTHY -> {
+            val left = stats.yourDueToday - stats.yourDoneToday
+            val chores = if (left == 1) "1 chore" else "$left chores"
+            if (stats.health == Health.SICK) "$name feels sick. Finish $chores to feel better"
+            else "$name feels a bit queasy. $chores to go"
+        }
         stats.houseCondition >= 85 -> "$name is relaxing in a sparkling home"
         stats.houseCondition >= 50 -> "$name is relaxing in a tidy home"
         else -> "$name is resting — ready when you are"
@@ -180,6 +187,7 @@ fun HomeScreen(
                     recentClean = recent,
                     look = data.profile.look,
                     tier = stats.tier,
+                    health = stats.health,
                     decor = data.profile.equippedDecor,
                     focus = focus,
                     roomCondition = stats.roomCondition,

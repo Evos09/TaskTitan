@@ -10,6 +10,13 @@ enum class EnergyTier(val label: String, val min: Int) {
     RADIANT("Radiant", 8),
 }
 
+/** How the avatar feels today, set by whether the chores that are yours today are done. */
+enum class Health(val label: String) {
+    HEALTHY("Healthy"),
+    QUEASY("Feeling sick"),
+    SICK("Sick"),
+}
+
 data class Reward(val xp: Int, val coins: Int, val energy: Int)
 
 object GameRules {
@@ -48,6 +55,13 @@ object GameRules {
     }
 
     fun tier(energy: Int): EnergyTier = EnergyTier.entries.last { energy >= it.min }
+
+    /** Healthy with every chore of yours done (or none due), sick when fewer than half are done. */
+    fun health(due: Int, done: Int): Health = when {
+        due <= 0 || done >= due -> Health.HEALTHY
+        done * 2 >= due -> Health.QUEASY
+        else -> Health.SICK
+    }
 
     fun isDue(chore: Chore, day: Long): Boolean {
         if (day < chore.startEpochDay) return false

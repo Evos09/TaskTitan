@@ -57,6 +57,16 @@ class GameRulesTest {
     }
 
     @Test
+    fun `health is good only when every chore of yours is done`() {
+        assertEquals(Health.HEALTHY, GameRules.health(due = 0, done = 0))
+        assertEquals(Health.HEALTHY, GameRules.health(due = 3, done = 3))
+        assertEquals(Health.QUEASY, GameRules.health(due = 4, done = 2))
+        assertEquals(Health.QUEASY, GameRules.health(due = 3, done = 2))
+        assertEquals(Health.SICK, GameRules.health(due = 3, done = 1))
+        assertEquals(Health.SICK, GameRules.health(due = 1, done = 0))
+    }
+
+    @Test
     fun `condition labels switch at their thresholds`() {
         assertEquals("Fresh start", GameRules.conditionLabel(0))
         assertEquals("Fresh start", GameRules.conditionLabel(24))

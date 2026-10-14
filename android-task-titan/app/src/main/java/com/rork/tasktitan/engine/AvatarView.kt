@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.rork.tasktitan.data.AvatarLook
 import com.rork.tasktitan.data.EnergyTier
+import com.rork.tasktitan.data.Health
 import com.rork.tasktitan.ui.theme.TT
 import kotlin.math.min
 
@@ -30,6 +31,7 @@ fun AvatarView(
     spin: Boolean = true,
     pedestal: Color = Color(0xFFFFE9D2),
     description: String = "Your 3D avatar",
+    health: Health = Health.HEALTHY,
 ) {
     val reduced = TT.reducedMotion
     val renderer = remember { Renderer() }
@@ -65,7 +67,7 @@ fun AvatarView(
         mb.layer = 0
         mb.box(-0.5f, -0.18f, -0.5f, 0.5f, 0f, 0.5f, pedestal.copy(red = pedestal.red * 0.95f, green = pedestal.green * 0.9f), pedestal)
         mb.layer = 1
-        buildAvatar(mb, look, tier, 0f, 0f, 0f, yaw, pose, t, 1f, withPet = true)
+        buildAvatar(mb, look, tier, 0f, 0f, 0f, yaw, pose, t, 1f, withPet = true, health = health)
         val cam = Camera(0f, 0.28f, 8f, 0f, 0.55f, 0f, 1f)
         renderer.draw(this, mb.faces, cam, min(size.width, size.height) * 0.62f)
     }
