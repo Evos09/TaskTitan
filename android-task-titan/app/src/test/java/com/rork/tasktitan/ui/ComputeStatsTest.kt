@@ -139,6 +139,28 @@ class ComputeStatsTest {
     }
 
     @Test
+    fun `chores only count once their reminder time has passed`() {
+        val nine = base.copy(chores = base.chores.map { it.copy(remindMinuteOfDay = 9 * 60) })
+        assertEquals(Health.HEALTHY, AppViewModel.computeStats(nine, today, nowMinute = 8 * 60).health)
+        assertEquals(0, AppViewModel.computeStats(nine, today, nowMinute = 8 * 60).yourDueToday)
+        assertEquals(Health.SICK, AppViewModel.computeStats(nine, today, nowMinute = 9 * 60).health)
+    }
+
+    @Test
+    fun `chores without a reminder count from six in the evening`() {
+        assertEquals(Health.HEALTHY, AppViewModel.computeStats(base, today, nowMinute = 17 * 60 + 59).health)
+        assertEquals(Health.SICK, AppViewModel.computeStats(base, today, nowMinute = 18 * 60).health)
+    }
+
+    @Test
+    fun `a chore finished before its reminder time still counts`() {
+        val nine = base.copy(chores = base.chores.map { it.copy(remindMinuteOfDay = 9 * 60) }, completions = listOf(done("light", today)))
+        val s = AppViewModel.computeStats(nine, today, nowMinute = 8 * 60)
+        assertEquals(1, s.yourDueToday)
+        assertEquals(Health.HEALTHY, s.health)
+    }
+
+    @Test
     fun `chores assigned to someone else do not make you sick`() {
         val samsChores = base.copy(chores = base.chores.map { it.copy(assigneeId = "sam") })
         val s = stats(samsChores)

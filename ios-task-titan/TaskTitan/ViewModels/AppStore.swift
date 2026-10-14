@@ -69,6 +69,9 @@ final class AppStore {
     private(set) var stats: Stats
     private(set) var loaded = false
     private(set) var today: Int = DateUtil.today()
+    /// Local minute of the day; chores start counting toward health at their reminder time.
+    private(set) var nowMinute: Int = DateUtil.minuteOfDay()
+    @ObservationIgnored private var clock: Timer?
 
     /// choreId → time it was just completed; drives the room-tidying animation.
     private(set) var recentClean: [String: Date] = [:]
@@ -84,18 +87,28 @@ final class AppStore {
         recompute()
         loaded = true
         ReminderService.shared.sync(data)
+        clock = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tickClock() }
+        }
     }
 
     private func recompute() {
-        stats = AppStore.computeStats(data, today: today)
+        stats = AppStore.computeStats(data, today: today, nowMinute: nowMinute)
+    }
+
+    private func tickClock() {
+        let m = DateUtil.minuteOfDay()
+        if m != nowMinute {
+            nowMinute = m
+            recompute()
+        }
     }
 
     func refreshDay() {
         let now = DateUtil.today()
-        if now != today {
-            today = now
-            recompute()
-        }
+        nowMinute = DateUtil.minuteOfDay()
+        if now != today { today = now }
+        recompute()
         // Expired pauses and day rollovers are picked up here.
         ReminderService.shared.sync(data)
     }
@@ -375,7 +388,8 @@ final class AppStore {
 
     // MARK: Derived stats
 
-    static func computeStats(_ d: AppData, today: Int) -> Stats {
+    /// `nowMinute` is the local minute of `today`; the default (end of day) counts every chore.
+    static func computeStats(_ d: AppData, today: Int, nowMinute: Int = 24 * 60) -> Stats {
         let you = you(d)
         let validIds = Set(d.chores.map(\.id))
         let confirmed = d.completions.filter(\.confirmed)
@@ -389,7 +403,10 @@ final class AppStore {
             .map { ChoreStatus(chore: $0, room: roomsById[$0.roomId], completion: todayCompletions[$0.id]) }
             .sorted { a, b in a.isDone != b.isDone ? !a.isDone : a.chore.weight > b.chore.weight }
         // Chores assigned to you, or to nobody, count toward your health.
-        let yourDue = todayChores.filter { $0.chore.assigneeId == nil || $0.chore.assigneeId == you?.id }
+        let yourDue = todayChores.filter {
+            ($0.chore.assigneeId == nil || $0.chore.assigneeId == you?.id) &&
+                GameRules.countsTowardHealth($0.chore, isDone: $0.isDone, nowMinute: nowMinute)
+        }
         let yourDone = yourDue.filter(\.isDone).count
         let dueCount = todayChores.count
         let doneCount = todayChores.filter(\.isDone).count

@@ -37,6 +37,12 @@ nonisolated enum DateUtil {
 
     static func hourOfDay() -> Int { Calendar.current.component(.hour, from: Date()) }
 
+    /// Local minutes since midnight (0-1439).
+    static func minuteOfDay(_ now: Date = Date()) -> Int {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: now)
+        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+    }
+
     /// Local `Date` for a given epoch day at a minute-of-day (DST-safe via Calendar).
     static func localDate(day: Int, minuteOfDay: Int) -> Date? {
         var comps = utc.dateComponents([.year, .month, .day], from: date(day))

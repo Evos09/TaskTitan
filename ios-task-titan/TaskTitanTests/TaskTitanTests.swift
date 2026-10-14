@@ -183,6 +183,18 @@ struct StatsTests {
         #expect(AppStore.computeStats(d, today: today).health == .healthy)
     }
 
+    @Test func choresOnlyCountOnceTheirReminderTimeHasPassed() {
+        var d = base()
+        d.chores = d.chores.map { var c = $0; c.remindMinuteOfDay = 9 * 60; return c }
+        #expect(AppStore.computeStats(d, today: today, nowMinute: 8 * 60).health == .healthy)
+        #expect(AppStore.computeStats(d, today: today, nowMinute: 9 * 60).health == .sick)
+        #expect(AppStore.computeStats(base(), today: today, nowMinute: 17 * 60 + 59).health == .healthy)
+        #expect(AppStore.computeStats(base(), today: today, nowMinute: 18 * 60).health == .sick)
+        d.completions = [done("light", today)]
+        let early = AppStore.computeStats(d, today: today, nowMinute: 8 * 60)
+        #expect(early.yourDueToday == 1 && early.health == .healthy)
+    }
+
     @Test func choresAssignedToSomeoneElseDoNotMakeYouSick() {
         var d = base()
         d.chores = d.chores.map { var c = $0; c.assigneeId = "sam"; return c }

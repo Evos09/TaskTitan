@@ -32,4 +32,7 @@ object DateUtil {
     fun weekStart(day: Long): Long = day - dayOfWeek(day)
 
     fun hourOfDay(): Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+
+    /** Local minutes since midnight (0-1439). */
+    fun minuteOfDay(): Int = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) }
 }

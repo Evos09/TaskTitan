@@ -56,6 +56,16 @@ object GameRules {
 
     fun tier(energy: Int): EnergyTier = EnergyTier.entries.last { energy >= it.min }
 
+    /** When a chore with no reminder time starts counting toward health: 6:00 PM. */
+    const val DEFAULT_HEALTH_MINUTE: Int = 18 * 60
+
+    /**
+     * A chore counts toward health once its reminder time has passed (6:00 PM when it has none),
+     * or as soon as it is done, so finishing early still helps.
+     */
+    fun countsTowardHealth(chore: Chore, isDone: Boolean, nowMinute: Int): Boolean =
+        isDone || nowMinute >= (chore.remindMinuteOfDay ?: DEFAULT_HEALTH_MINUTE)
+
     /** Healthy with every chore of yours done (or none due), sick when fewer than half are done. */
     fun health(due: Int, done: Int): Health = when {
         due <= 0 || done >= due -> Health.HEALTHY

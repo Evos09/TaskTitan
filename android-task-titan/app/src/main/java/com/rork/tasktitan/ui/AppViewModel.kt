@@ -24,6 +24,7 @@ import com.rork.tasktitan.data.SeasonEvent
 import com.rork.tasktitan.data.SecureStore
 import com.rork.tasktitan.reminders.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -90,6 +91,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dayTick = MutableStateFlow(DateUtil.today())
 
+    /** Local minute of the day; chores start counting toward health at their reminder time. */
+    private val minuteTick = MutableStateFlow(DateUtil.minuteOfDay())
+
     /** choreId → time the chore was just completed; drives the room-tidying animation. */
     private val _recentClean = MutableStateFlow<Map<String, Long>>(emptyMap())
     val recentClean: StateFlow<Map<String, Long>> = _recentClean.asStateFlow()
@@ -101,8 +105,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _celebration = MutableStateFlow<Celebration?>(null)
     val celebration: StateFlow<Celebration?> = _celebration.asStateFlow()
 
-    val stats: StateFlow<Stats> = combine(_data, dayTick) { d, day -> computeStats(d, day) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, computeStats(AppData(), DateUtil.today()))
+    val stats: StateFlow<Stats> = combine(_data, dayTick, minuteTick) { d, day, minute -> computeStats(d, day, minute) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, computeStats(AppData(), DateUtil.today(), DateUtil.minuteOfDay()))
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -111,10 +115,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _loaded.value = true
             if (saved != null) ReminderScheduler.sync(getApplication(), saved)
         }
+        viewModelScope.launch {
+            while (true) {
+                delay(30_000)
+                minuteTick.value = DateUtil.minuteOfDay()
+            }
+        }
     }
 
     fun refreshDay() {
         dayTick.value = DateUtil.today()
+        minuteTick.value = DateUtil.minuteOfDay()
         // Re-sync on return to the app: expired pauses resume and missed day rolls happen here.
         viewModelScope.launch(Dispatchers.IO) { ReminderScheduler.sync(getApplication(), _data.value) }
     }
@@ -383,7 +394,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         fun you(d: AppData): Member? = d.members.firstOrNull { it.isYou }
 
-        fun computeStats(d: AppData, today: Long): Stats {
+        /** [nowMinute] is the local minute of [today]; the default (end of day) counts every chore. */
+        fun computeStats(d: AppData, today: Long, nowMinute: Int = 24 * 60): Stats {
             val you = you(d)
             val validIds = d.chores.map { it.id }.toSet()
             val confirmed = d.completions.filter { it.confirmed }
@@ -397,7 +409,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 .map { ChoreStatus(it, roomsById[it.roomId], todayCompletions[it.id]) }
                 .sortedWith(compareBy<ChoreStatus> { it.isDone }.thenByDescending { it.chore.weight })
             // Chores assigned to you, or to nobody, count toward your health.
-            val yourDue = todayChores.filter { it.chore.assigneeId == null || it.chore.assigneeId == you?.id }
+            val yourDue = todayChores.filter {
+                (it.chore.assigneeId == null || it.chore.assigneeId == you?.id) &&
+                    GameRules.countsTowardHealth(it.chore, it.isDone, nowMinute)
+            }
             val yourDone = yourDue.count { it.isDone }
             val dueCount = todayChores.size
             val doneCount = todayChores.count { it.isDone }

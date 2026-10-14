@@ -87,6 +87,15 @@ nonisolated enum GameRules {
         EnergyTier.allCases.last { energy >= $0.min } ?? .neutral
     }
 
+    /// When a chore with no reminder time starts counting toward health: 6:00 PM.
+    static let defaultHealthMinute = 18 * 60
+
+    /// A chore counts toward health once its reminder time has passed (6:00 PM when it has none),
+    /// or as soon as it is done, so finishing early still helps.
+    static func countsTowardHealth(_ chore: Chore, isDone: Bool, nowMinute: Int) -> Bool {
+        isDone || nowMinute >= (chore.remindMinuteOfDay ?? defaultHealthMinute)
+    }
+
     /// Healthy with every chore of yours done (or none due), sick when fewer than half are done.
     static func health(due: Int, done: Int) -> Health {
         if due <= 0 || done >= due { return .healthy }
