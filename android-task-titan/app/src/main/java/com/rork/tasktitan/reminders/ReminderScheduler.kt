@@ -31,6 +31,8 @@ object ReminderScheduler {
     private const val DAY_MS = 86_400_000L
 
     fun ensureChannel(context: Context) {
+        // Notification channels arrived in API 26; older versions post without one.
+        if (Build.VERSION.SDK_INT < 26) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             manager.createNotificationChannel(

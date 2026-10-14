@@ -1,6 +1,10 @@
 package com.rork.tasktitan.engine
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
@@ -18,7 +22,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
@@ -33,6 +39,7 @@ import com.rork.tasktitan.data.EnergyTier
 import com.rork.tasktitan.data.Room
 import com.rork.tasktitan.data.RoomType
 import com.rork.tasktitan.ui.theme.TT
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -111,6 +118,8 @@ fun House3DView(
     autoSpin: Boolean = false,
     showLabels: Boolean = false,
     animated: Boolean = true,
+    /** Inside a scrolling page: one-finger vertical drags scroll the page instead of tilting the camera. */
+    verticalDragScrolls: Boolean = false,
     description: String = "3D view of your home",
 ) {
     val reduced = TT.reducedMotion || !animated
@@ -222,8 +231,8 @@ fun House3DView(
             .semantics { contentDescription = description }
             .then(
                 if (interactive) Modifier
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
+                    .pointerInput(verticalDragScrolls) {
+                        val onTransform: (Offset, Float) -> Unit = { pan, zoom ->
                             cam.yaw -= pan.x * 0.008f
                             cam.pitch = (cam.pitch + pan.y * 0.005f).coerceIn(0.32f, 1.45f)
                             cam.zoom = (cam.zoom * zoom).coerceIn(0.6f, 2.8f)
@@ -232,6 +241,8 @@ fun House3DView(
                             if (k != yawK) yawK = k
                             frame++
                         }
+                        if (verticalDragScrolls) detectOrbitGestures(onTransform)
+                        else detectTransformGestures { _, pan, zoom, _ -> onTransform(pan, zoom) }
                     }
                     .pointerInput(Unit) {
                         detectTapGestures(onDoubleTap = {
@@ -353,5 +364,36 @@ private fun DrawScope.drawLabels(
         val bg = if (pct >= 100) Color(0xFFE2F7E6) else Color(0xF2FFFFFF)
         drawRoundRect(bg, Offset(tmp[0] - w / 2, tmp[1] - h / 2), Size(w, h), CornerRadius(h / 2))
         drawText(tl, topLeft = Offset(tmp[0] - tl.size.width / 2f, tmp[1] - tl.size.height / 2f))
+    }
+}
+
+/**
+ * Like [detectTransformGestures], but a one-finger drag that starts out vertical is left
+ * unconsumed so an enclosing scroll container can take it. Horizontal drags and any
+ * two-finger gesture still drive the camera.
+ */
+private suspend fun PointerInputScope.detectOrbitGestures(onTransform: (pan: Offset, zoom: Float) -> Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        var claimed = false
+        var travelled = Offset.Zero
+        while (true) {
+            val event = awaitPointerEvent()
+            if (!claimed) {
+                if (event.changes.count { it.pressed } >= 2) {
+                    claimed = true
+                } else {
+                    travelled += event.calculatePan()
+                    if (travelled.getDistance() > viewConfiguration.touchSlop) {
+                        if (abs(travelled.x) > abs(travelled.y)) claimed = true else break
+                    }
+                }
+            }
+            if (claimed) {
+                onTransform(event.calculatePan(), event.calculateZoom())
+                event.changes.forEach { if (it.positionChanged()) it.consume() }
+            }
+            if (event.changes.none { it.pressed }) break
+        }
     }
 }

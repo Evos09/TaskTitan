@@ -81,6 +81,8 @@ fun ConsentScreen(vm: AppViewModel, onContinue: () -> Unit) {
         Box(Modifier.fillMaxWidth().height(230.dp), contentAlignment = Alignment.Center) {
             AvatarView(AvatarLook(), EnergyTier.THRIVING, Modifier.fillMaxSize(), pose = Pose.CELEBRATE, spin = true)
         }
+        // The pedestal renders below the avatar box; keep it clear of the title.
+        Spacer(Modifier.height(48.dp))
         Text("Task Titan", style = MaterialTheme.typography.displaySmall, color = c.ink)
         Text("Real chores, a happier 3D home. Your avatar only ever levels up.", style = MaterialTheme.typography.bodyLarge, color = c.muted)
         Spacer(Modifier.height(20.dp))
