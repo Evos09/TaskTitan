@@ -127,6 +127,8 @@ nonisolated struct AvatarLook: Codable, Hashable, Sendable {
     var accessory: String? = nil
     var pet: String? = nil
     var aura: String? = nil
+    /// "boy" or "girl"; picks the character model and its default hair.
+    var style: String = "boy"
 }
 
 nonisolated struct Profile: Codable, Hashable, Sendable {
@@ -267,6 +269,7 @@ nonisolated extension AvatarLook {
         accessory = try c.decodeIfPresent(String.self, forKey: .accessory)
         pet = try c.decodeIfPresent(String.self, forKey: .pet)
         aura = try c.decodeIfPresent(String.self, forKey: .aura)
+        style = try c.value(.style, or: d.style)
     }
 }
 

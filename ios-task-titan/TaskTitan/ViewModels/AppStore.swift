@@ -29,6 +29,10 @@ struct Stats {
     var coins: Int
     var energy: Int
     var tier: EnergyTier
+    /// How the avatar feels: set by whether your chores due today are done.
+    var health: Health
+    var yourDueToday: Int
+    var yourDoneToday: Int
     var streak: Int
     var todayChores: [ChoreStatus]
     var waitingCount: Int
@@ -108,13 +112,14 @@ final class AppStore {
 
     // MARK: Onboarding & house
 
-    func giveConsent(name: String, ageGroup: String, parentApproved: Bool) {
+    func giveConsent(name: String, ageGroup: String, parentApproved: Bool, style: String = "boy") {
         mutate { d in
             let trimmed = name.trimmingCharacters(in: .whitespaces)
             let you = Member(id: GameRules.newId(), name: trimmed.isEmpty ? "You" : trimmed, colorIndex: 0, isYou: true)
             d.members = [you]
             d.inviteCode = GameRules.inviteCode()
             d.profile.name = you.name
+            d.profile.look.style = style
             d.settings.consentGiven = true
             d.settings.ageGroup = ageGroup
             d.settings.parentApproved = parentApproved
@@ -383,6 +388,9 @@ final class AppStore {
         let todayChores = d.chores.filter { GameRules.isDue($0, day: today) }
             .map { ChoreStatus(chore: $0, room: roomsById[$0.roomId], completion: todayCompletions[$0.id]) }
             .sorted { a, b in a.isDone != b.isDone ? !a.isDone : a.chore.weight > b.chore.weight }
+        // Chores assigned to you, or to nobody, count toward your health.
+        let yourDue = todayChores.filter { $0.chore.assigneeId == nil || $0.chore.assigneeId == you?.id }
+        let yourDone = yourDue.filter(\.isDone).count
         let dueCount = todayChores.count
         let doneCount = todayChores.filter(\.isDone).count
         let condition = dueCount == 0 ? 100 : doneCount * 100 / dueCount
@@ -432,7 +440,9 @@ final class AppStore {
 
         return Stats(
             today: today, you: you, level: level, totalXp: totalXp, coins: d.profile.coins,
-            energy: energy, tier: GameRules.tier(energy), streak: streak,
+            energy: energy, tier: GameRules.tier(energy),
+            health: you == nil ? .healthy : GameRules.health(due: yourDue.count, done: yourDone),
+            yourDueToday: yourDue.count, yourDoneToday: yourDone, streak: streak,
             todayChores: todayChores, waitingCount: dueCount - doneCount,
             houseCondition: condition, roomCondition: roomCondition,
             householdWeek: weekCompletions.count,

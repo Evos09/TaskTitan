@@ -8,6 +8,7 @@ struct ConsentView: View {
     @State private var age = "adult"
     @State private var agreed = false
     @State private var parent = false
+    @State private var style = "boy"
     @FocusState private var nameFocused: Bool
 
     private var needsParent: Bool { age == "child" }
@@ -16,7 +17,7 @@ struct ConsentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                AvatarView(look: AvatarLook(), tier: .thriving, pose: .celebrate, description: "A cheerful 3D avatar waving hello")
+                AvatarView(look: AvatarLook(style: style), tier: .thriving, pose: .celebrate, description: "A cheerful 3D avatar waving hello")
                     .frame(height: 230)
                     .frame(maxWidth: .infinity)
                 Text("Task Titan").font(tt.display(34)).foregroundStyle(tt.c.ink)
@@ -34,6 +35,14 @@ struct ConsentView: View {
                     .background(tt.c.surface, in: .rect(cornerRadius: 18))
                     .onChange(of: name) { _, v in if v.count > 20 { name = String(v.prefix(20)) } }
                     .padding(.top, 20)
+
+                Text("Your character").font(tt.body(16, 800)).foregroundStyle(tt.c.ink).padding(.top, 16)
+                Picker("Your character", selection: $style) {
+                    Text("Boy").tag("boy")
+                    Text("Girl").tag("girl")
+                }
+                .pickerStyle(.segmented)
+                .padding(.top, 8)
 
                 Text("Who's using this device?").font(tt.body(16, 800)).foregroundStyle(tt.c.ink).padding(.top, 16)
                 Picker("Age group", selection: $age) {
@@ -63,7 +72,7 @@ struct ConsentView: View {
                 }
 
                 Button("Build my home") {
-                    store.giveConsent(name: name, ageGroup: age, parentApproved: parent)
+                    store.giveConsent(name: name, ageGroup: age, parentApproved: parent, style: style)
                     if needsParent {
                         store.updateSettings {
                             $0.shareActivity = false

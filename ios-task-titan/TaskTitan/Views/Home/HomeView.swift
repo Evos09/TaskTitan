@@ -85,6 +85,11 @@ struct HomeView: View {
            let room = store.data.rooms.first(where: { $0.id == f.roomId }) {
             return "\(name) is celebrating in the \(room.name.lowercased())!"
         }
+        if stats.health != .healthy {
+            let left = stats.yourDueToday - stats.yourDoneToday
+            let chores = left == 1 ? "1 chore" : "\(left) chores"
+            return stats.health == .sick ? "\(name) feels sick. Finish \(chores) to feel better" : "\(name) feels a bit queasy. \(chores) to go"
+        }
         if stats.houseCondition >= 85 { return "\(name) is relaxing in a sparkling home" }
         if stats.houseCondition >= 50 { return "\(name) is relaxing in a tidy home" }
         return "\(name) is resting — ready when you are"
@@ -111,7 +116,7 @@ struct HomeView: View {
             House3DView(
                 scene: HouseScene(
                     rooms: data.rooms, topFloor: floor, props: props, pendingIds: pending,
-                    recentClean: store.recentClean, look: data.profile.look, tier: stats.tier,
+                    recentClean: store.recentClean, look: data.profile.look, tier: stats.tier, health: stats.health,
                     decor: data.profile.equippedDecor, focus: store.avatarFocus, roomCondition: stats.roomCondition
                 ),
                 cameraMode: mode,

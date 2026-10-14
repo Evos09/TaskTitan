@@ -23,6 +23,19 @@ nonisolated enum EnergyTier: Int, CaseIterable, Sendable {
     }
 }
 
+/// How the avatar feels today, set by whether the chores that are yours today are done.
+nonisolated enum Health: Sendable {
+    case healthy, queasy, sick
+
+    var label: String {
+        switch self {
+        case .healthy: "Healthy"
+        case .queasy: "Feeling sick"
+        case .sick: "Sick"
+        }
+    }
+}
+
 nonisolated struct Reward: Hashable, Sendable {
     let xp: Int
     let coins: Int
@@ -72,6 +85,12 @@ nonisolated enum GameRules {
 
     static func tier(_ energy: Int) -> EnergyTier {
         EnergyTier.allCases.last { energy >= $0.min } ?? .neutral
+    }
+
+    /// Healthy with every chore of yours done (or none due), sick when fewer than half are done.
+    static func health(due: Int, done: Int) -> Health {
+        if due <= 0 || done >= due { return .healthy }
+        return done * 2 >= due ? .queasy : .sick
     }
 
     static func isDue(_ chore: Chore, day: Int) -> Bool {

@@ -101,6 +101,18 @@ struct GameRulesTests {
         #expect(GameRules.isDue(c, day: day(2025, 5, 31)))
     }
 
+    @Test func healthThresholds() {
+        #expect(GameRules.health(due: 0, done: 0) == .healthy)
+        #expect(GameRules.health(due: 3, done: 3) == .healthy)
+        #expect(GameRules.health(due: 4, done: 2) == .queasy)
+        #expect(GameRules.health(due: 3, done: 1) == .sick)
+    }
+
+    @Test func avatarStyleDefaultsToBoyForOldSaves() throws {
+        let look = try JSONDecoder().decode(AvatarLook.self, from: Data(#"{"hair":"hair_bob"}"#.utf8))
+        #expect(look.style == "boy")
+    }
+
     @Test func streaksCountConsecutiveConfirmedDays() {
         let list = [done("c", 100), done("c", 99), done("c", 98), done("c", 96), done("c", 97, confirmed: false)]
         #expect(GameRules.streak(list, memberId: "me", today: 100) == 3)
@@ -158,6 +170,25 @@ struct StatsTests {
         #expect(s.streak == 1)
         #expect(s.todayChores.map(\.chore.id) == ["heavy", "light"])
         #expect(s.unlockedAchievements.contains("first"))
+    }
+
+    @Test func healthFollowsYourChoresForToday() {
+        #expect(AppStore.computeStats(base(), today: today).health == .sick)
+        var d = base()
+        d.completions = [done("light", today)]
+        let half = AppStore.computeStats(d, today: today)
+        #expect(half.health == .queasy)
+        #expect(half.yourDueToday == 2 && half.yourDoneToday == 1)
+        d.completions.append(done("heavy", today, member: "sam"))
+        #expect(AppStore.computeStats(d, today: today).health == .healthy)
+    }
+
+    @Test func choresAssignedToSomeoneElseDoNotMakeYouSick() {
+        var d = base()
+        d.chores = d.chores.map { var c = $0; c.assigneeId = "sam"; return c }
+        let s = AppStore.computeStats(d, today: today)
+        #expect(s.yourDueToday == 0)
+        #expect(s.health == .healthy)
     }
 
     @Test func unconfirmedAndOtherMembersWorkDoesNotEarnYourXp() {

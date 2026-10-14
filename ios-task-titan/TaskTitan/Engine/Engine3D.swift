@@ -50,11 +50,45 @@ nonisolated final class MeshBuilder {
 
     func resetTransform() { transform(0, 0, 0, yaw: 0) }
 
+    // Local joint frame applied before the placement transform: p' = jm * p + jt (jm is a row-major rotation).
+    private var jm: [Double] = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    private var jt = SIMD3<Double>(0, 0, 0)
+    private var joints: [([Double], SIMD3<Double>)] = []
+
+    /// Rotates everything drawn until the matching `popJoint()` about the pivot, first by `rz`
+    /// around z, then by `rx` around x. Joints nest, so an elbow inside a shoulder follows the
+    /// shoulder. Positive `rx` swings the part below the pivot backwards.
+    func pushJoint(_ px: Double, _ py: Double, _ pz: Double, rx: Double = 0, rz: Double = 0) {
+        joints.append((jm, jt))
+        let cx = cos(rx), sx = sin(rx), cz = cos(rz), sz = sin(rz)
+        let r: [Double] = [cz, -sz, 0, cx * sz, cx * cz, -sx, sx * sz, sx * cz, cx]
+        var m = [Double](repeating: 0, count: 9)
+        for row in 0..<3 {
+            for col in 0..<3 {
+                m[row * 3 + col] = jm[row * 3] * r[col] + jm[row * 3 + 1] * r[3 + col] + jm[row * 3 + 2] * r[6 + col]
+            }
+        }
+        let p = SIMD3(px, py, pz)
+        jt = apply(jm, p) - apply(m, p) + jt
+        jm = m
+    }
+
+    func popJoint() {
+        let (m, t) = joints.removeLast()
+        jm = m; jt = t
+    }
+
+    private func apply(_ m: [Double], _ v: SIMD3<Double>) -> SIMD3<Double> {
+        SIMD3(m[0] * v.x + m[1] * v.y + m[2] * v.z, m[3] * v.x + m[4] * v.y + m[5] * v.z, m[6] * v.x + m[7] * v.y + m[8] * v.z)
+    }
+
     private func world(_ p: SIMD3<Double>) -> SIMD3<Double> {
         SIMD3(o.x + (p.x * cy + p.z * sy) * scale, o.y + p.y * scale, o.z + (-p.x * sy + p.z * cy) * scale)
     }
 
-    private func add(_ p: [SIMD3<Double>], _ n: SIMD3<Double>, _ color: RGB, bias: Double, twoSided: Bool, unlit: Bool) {
+    private func add(_ p0: [SIMD3<Double>], _ n0: SIMD3<Double>, _ color: RGB, bias: Double, twoSided: Bool, unlit: Bool) {
+        let p = joints.isEmpty ? p0 : p0.map { apply(jm, $0) + jt }
+        let n = joints.isEmpty ? n0 : apply(jm, n0)
         let wn = SIMD3(n.x * cy + n.z * sy, n.y, -n.x * sy + n.z * cy)
         let col = unlit ? color : shade(color, wn, light: light, tint: tint)
         faces.append(Face(pts: p.map(world), normal: wn, color: col, layer: layer, bias: bias, twoSided: twoSided))

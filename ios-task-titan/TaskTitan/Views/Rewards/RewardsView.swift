@@ -34,11 +34,11 @@ struct RewardsView: View {
 
                 ZStack(alignment: .topLeading) {
                     LinearGradient(colors: [Color(hex: 0xFFE3F0), Color(hex: 0xFFF1E2), Color(hex: 0xFFF8EC)], startPoint: .top, endPoint: .bottom)
-                    AvatarView(look: data.profile.look, tier: stats.tier, description: "Your avatar, energy \(stats.tier.label)")
+                    AvatarView(look: data.profile.look, tier: stats.tier, description: "Your avatar, \(stats.health.label.lowercased()), energy \(stats.tier.label)", health: stats.health)
                         .padding(.top, 24)
                     VStack(alignment: .leading, spacing: 0) {
                         Text("\(stats.you?.name ?? "You") · Lv \(stats.level.level)").font(tt.display(20)).foregroundStyle(tt.c.ink)
-                        Text("Energy: \(stats.tier.label)").font(tt.body(15, 800)).foregroundStyle(tt.c.mint)
+                        Text("\(stats.health.label), energy \(stats.tier.label)").font(tt.body(15, 800)).foregroundStyle(stats.health == .healthy ? tt.c.mint : tt.c.bubblegum)
                     }
                     .padding(16)
                     .allowsHitTesting(false)
@@ -51,7 +51,7 @@ struct RewardsView: View {
                 .clipShape(.rect(cornerRadius: 30))
                 .padding(.horizontal, 12)
 
-                Text("Energy starts fresh each morning and only goes up. Missed chores never take anything away.")
+                Text("Health follows today's chores: finish yours and you feel great again. Energy and levels only ever go up.")
                     .font(tt.body(12)).foregroundStyle(tt.c.muted)
                     .padding(.horizontal, 20).padding(.vertical, 8)
 
@@ -184,7 +184,14 @@ struct RewardsView: View {
 
     private func lookEditor(look: AvatarLook) -> some View {
         SoftCard {
-            Text("Body type").font(tt.body(14, 700)).foregroundStyle(tt.c.ink)
+            Text("Character").font(tt.body(14, 700)).foregroundStyle(tt.c.ink)
+            Picker("Character", selection: Binding(get: { look.style }, set: { var l = look; l.style = $0; store.setLook(l) })) {
+                Text("Boy").tag("boy")
+                Text("Girl").tag("girl")
+            }
+            .pickerStyle(.segmented)
+            .padding(.top, 6)
+            Text("Body type").font(tt.body(14, 700)).foregroundStyle(tt.c.ink).padding(.top, 14)
             Picker("Body type", selection: Binding(get: { look.body }, set: { var l = look; l.body = $0; store.setLook(l) })) {
                 ForEach(Array(Catalog.bodyLabels.enumerated()), id: \.offset) { i, l in Text(l).tag(i) }
             }

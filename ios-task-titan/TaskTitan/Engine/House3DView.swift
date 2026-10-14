@@ -14,6 +14,7 @@ struct HouseScene {
     var recentClean: [String: Date] = [:]
     var look: AvatarLook?
     var tier: EnergyTier = .neutral
+    var health: Health = .healthy
     var decor: [String] = []
     var focus: (roomId: String, at: Date)?
     var roomCondition: [String: Int] = [:]
@@ -242,7 +243,7 @@ struct House3DView: View {
         }
         if let look = scene.look, sim.aFloor == scene.topFloor, !floorRooms.isEmpty {
             dyn.layer = scene.topFloor * 10 + 1
-            buildAvatar(dyn, look: look, tier: scene.tier, x: sim.ax, y: base + slab, z: sim.az, facing: sim.facing, pose: sim.pose, t: t)
+            buildAvatar(dyn, look: look, tier: scene.tier, x: sim.ax, y: base + slab, z: sim.az, facing: sim.facing, pose: sim.pose, t: t, health: scene.health)
         }
 
         Renderer3D.draw(&ctx, size: size, faces: dyn.faces.isEmpty ? sim.cache : sim.cache + dyn.faces, cam: camera, baseScale: baseScale)
@@ -271,7 +272,7 @@ struct House3DView: View {
                     }
                 }
             }
-            if scene.look != nil, scene.tier == .radiant, sim.aFloor == scene.topFloor {
+            if scene.look != nil, scene.tier == .radiant, scene.health == .healthy, sim.aFloor == scene.topFloor {
                 for j in 0..<4 {
                     let a = t * 1.6 + Double(j) * 1.57
                     if let pt = proj(SIMD3(sim.ax + cos(a) * 0.4, base + 0.5 + sin(t * 2 + Double(j)) * 0.25, sim.az + sin(a) * 0.4)) {
@@ -307,6 +308,7 @@ struct AvatarView: View {
     var spin = true
     var pedestal: RGB = c(0xFFFFE9D2)
     var description = "Your 3D avatar"
+    var health: Health = .healthy
 
     @Environment(\.tt) private var tt
     @State private var yaw = 0.4
@@ -323,7 +325,7 @@ struct AvatarView: View {
                 mb.layer = 0
                 mb.box(-0.5, -0.18, -0.5, 0.5, 0, 0.5, RGB(r: pedestal.r * 0.95, g: pedestal.g * 0.9, b: pedestal.b), top: pedestal)
                 mb.layer = 1
-                buildAvatar(mb, look: look, tier: tier, x: 0, y: 0, z: 0, facing: spinYaw, pose: pose, t: t)
+                buildAvatar(mb, look: look, tier: tier, x: 0, y: 0, z: 0, facing: spinYaw, pose: pose, t: t, health: health)
                 let cam = Camera3D(yaw: 0, pitch: 0.28, distance: 8, target: SIMD3(0, 0.55, 0), zoom: 1)
                 Renderer3D.draw(&ctx, size: size, faces: mb.faces, cam: cam, baseScale: min(size.width, size.height) * 0.62)
             }

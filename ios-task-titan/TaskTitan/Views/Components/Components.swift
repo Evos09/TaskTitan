@@ -143,11 +143,12 @@ struct HudStrip: View {
                 Text("Lv \(stats.level.level)").font(tt.display(17)).foregroundStyle(tt.c.ink).monospacedDigit()
             }
             .layoutPriority(0.8)
-            pill("Energy \(stats.tier.label)") {
-                Image(systemName: "bolt.fill").font(.system(size: 18)).foregroundStyle(tt.c.mint)
+            let healthColor = stats.health == .healthy ? tt.c.mint : stats.health == .queasy ? tt.c.sun : tt.c.bubblegum
+            pill("Health \(stats.health.label), \(stats.yourDoneToday) of \(stats.yourDueToday) of your chores done") {
+                Image(systemName: "heart.fill").font(.system(size: 18)).foregroundStyle(healthColor)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Energy").font(tt.body(10, 700)).foregroundStyle(tt.c.muted)
-                    Text(stats.tier.label).font(tt.body(13, 800)).foregroundStyle(tt.c.mint).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("Health").font(tt.body(10, 700)).foregroundStyle(tt.c.muted)
+                    Text(stats.health.label).font(tt.body(13, 800)).foregroundStyle(healthColor).lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
             pill("XP \(stats.level.xpInto) of \(stats.level.xpNeeded)") {
