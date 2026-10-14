@@ -5,6 +5,8 @@ name: iOS
 on:
   push:
     paths: ["ios-task-titan/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios-task-titan/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 
 concurrency:
